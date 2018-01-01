@@ -88,7 +88,7 @@ def main():
     if dayCheck and timeCheck:
         toWork()
     else:
-       toHome()
+        toHome()
 
 
 if __name__ == "__main__":
