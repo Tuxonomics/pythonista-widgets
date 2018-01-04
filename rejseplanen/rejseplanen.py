@@ -8,7 +8,7 @@ Created on Sat Jan 1 19:32:32 2018
 WORK IN PROGRESS
 
 A small sript to use Rejseplanen's public REST API. The output needs to fit
-into Pythonista's widget terminal (40 characters on iPhone).
+into Pythonista's terminal (40 characters on iPhone).
 """
 
 import requests
@@ -17,8 +17,13 @@ import datetime
 import textwrap
 from conf import baseUrl, home1, work1
 
+import location
 
-def workString(origin, dest, timeOffset = 7):
+
+OUTPUTWIDTH = 40
+
+
+def requestStringOffset(origin, dest, timeOffset = 0):
     trip = [
         "/trip?originId=", str(origin),
         "&destId=", str(dest),
@@ -27,11 +32,23 @@ def workString(origin, dest, timeOffset = 7):
     return ''.join(trip)
 
 
-def journeyString(trip):
-    times = ' '.join(
+def requestStringTime(origin, dest, time):
+    trip = [
+        "/trip?originId=", str(origin),
+        "&destId=", str(dest),
+        "&time=", str(time),
+        "&format=json"]
+    return ''.join(trip)
+
+
+def durationString(trip):
+    duration = ' '.join(
         [trip[0]['Origin']['time'],
          "->", trip[-1]['Destination']['time'], ": "])
+    return duration
 
+
+def journeyString(trip):
     journey = []
     for part in trip:
         partStr = [
@@ -41,9 +58,7 @@ def journeyString(trip):
         journey.append(''.join(partStr))
 
     journey.append(part['Destination']['name'])
-    journey = '-'.join(journey)
-
-    return ''.join([times, journey])
+    return ' - '.join(journey)
 
 
 def checkStatus(status):
@@ -51,45 +66,64 @@ def checkStatus(status):
         sys.exit("Request not completed!")
 
 
-def printTrip(journey):
-#    print("---------------------------------------")
-    print(*textwrap.wrap(journey, 40), sep='\n')
+def printDuration(tripInfo):
+    print(OUTPUTWIDTH*"-")
+    print(durationString(tripInfo))
 
 
-def toWork():
-    twTrip  = workString(home1, work1)
+def printTrip(tripInfo):
+    journey = journeyString(tripInfo)
+    print(*textwrap.wrap(journey, OUTPUTWIDTH), sep='\n')
+    print()
+
+
+def toWork(time):
+    twTrip  = requestStringTime(home1, work1, time)
     r       = requests.get(baseUrl + twTrip)
+
     checkStatus(r.status_code)
 
-    # extract all trips, TODO: add some selection requirements    
     trips = r.json()['TripList']['Trip']
-    # take first trip
-    trip1   = trips[0]['Leg']
-    journey = journeyString(trip1)
-    
-    printTrip(journey)
+
+    for trip in trips:
+        tripInfo = trip['Leg']
+        printDuration(tripInfo)
+        printTrip(tripInfo)
 
 
 def toHome():
-    #TODO: get home based on GPS
     print("home")
+    #TODO: get home based on GPS
+
+    location.start_updates()
+    loc = location.get_location()
+    location.stop_updates()
+
+    lat = loc['latitude']
+    lon = loc['longitude']
+
+
+
+    print('latitude', lat, 'longitude', lon)
 
 
 def main():
     now  = datetime.datetime.now()
     time = now.time()
     day  = now.weekday()
-    
+
     timeCheck = (time > datetime.time(8)) and (time < datetime.time(9, 30))
     dayCheck  = day in list(range(5))
-    
+
     timeCheck = True
-    
+
     if dayCheck and timeCheck:
-        toWork()
+        toWork(time)
     else:
         toHome()
 
 
 if __name__ == "__main__":
     main()
+
+
