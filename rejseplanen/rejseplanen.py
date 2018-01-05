@@ -11,30 +11,41 @@ A small sript to use Rejseplanen's public REST API. The output needs to fit
 into Pythonista's terminal (40 characters on iPhone).
 """
 
+import location
 import requests
 import sys
 import datetime
 import textwrap
 from conf import baseUrl, home1, work1
 
-import location
-
 
 OUTPUTWIDTH = 40
+GPSFACTOR   = 10**6
 
 
-def requestStringOffset(origin, dest, timeOffset = 0):
-    trip = [
-        "/trip?originId=", str(origin),
-        "&destId=", str(dest),
-        "&offsetTime=", str(timeOffset),
-        "&format=json"]
-    return ''.join(trip)
+#def requestStringOffset(origin, dest, timeOffset = 0):
+#    trip = [
+#        "/trip?originId=", str(origin),
+#        "&destId=", str(dest),
+#        "&offsetTime=", str(timeOffset),
+#        "&format=json"]
+#    return ''.join(trip)
 
 
 def requestStringTime(origin, dest, time):
     trip = [
         "/trip?originId=", str(origin),
+        "&destId=", str(dest),
+        "&time=", str(time),
+        "&format=json"]
+    return ''.join(trip)
+
+
+def requestStringHome(lon, lat, dest, time):
+    trip = [
+        "/trip?originCoordX=", str(lon),
+        "&originCoordY=", str(lat),
+        "&originCoordName=Current_Location",
         "&destId=", str(dest),
         "&time=", str(time),
         "&format=json"]
@@ -66,6 +77,17 @@ def checkStatus(status):
         sys.exit("Request not completed!")
 
 
+def getCoordinates():
+    location.start_updates()
+    loc = location.get_location()
+    location.stop_updates()
+
+    lat = int(GPSFACTOR * loc['latitude'])
+    lon = int(GPSFACTOR * loc['longitude'])
+
+    return lat, lon
+
+
 def printDuration(tripInfo):
     print(OUTPUTWIDTH*"-")
     print(durationString(tripInfo))
@@ -77,9 +99,9 @@ def printTrip(tripInfo):
     print()
 
 
-def toWork(time):
-    twTrip  = requestStringTime(home1, work1, time)
-    r       = requests.get(baseUrl + twTrip)
+def homeWork(origin, dest, time):
+    rString = requestStringTime(origin, dest, time)
+    r       = requests.get(baseUrl + rString)
 
     checkStatus(r.status_code)
 
@@ -91,20 +113,23 @@ def toWork(time):
         printTrip(tripInfo)
 
 
-def toHome():
-    print("home")
-    #TODO: get home based on GPS
+def anywhereToHome(time):
+#    lat = int(55.656 * GPSFACTOR)
+#    lon = int(12.633 * GPSFACTOR)
 
-    location.start_updates()
-    loc = location.get_location()
-    location.stop_updates()
+    lat, lon = getCoordinates()
 
-    lat = loc['latitude']
-    lon = loc['longitude']
+    rString = requestStringHome(lon, lat, home1, time)
+    r       = requests.get(baseUrl + rString)
 
+    checkStatus(r.status_code)
 
+    trips = r.json()['TripList']['Trip']
 
-    print('latitude', lat, 'longitude', lon)
+    for trip in trips:
+        tripInfo = trip['Leg']
+        printDuration(tripInfo)
+        printTrip(tripInfo)
 
 
 def main():
@@ -112,15 +137,19 @@ def main():
     time = now.time()
     day  = now.weekday()
 
-    timeCheck = (time > datetime.time(8)) and (time < datetime.time(9, 30))
+    timeEarly = (time > datetime.time(8)) and (time < datetime.time(9, 30))
+    timeLate  = (time > datetime.time(16)) and (time < datetime.time(17, 30))
     dayCheck  = day in list(range(5))
 
-    timeCheck = True
+#    timeEarly = True
+#    timeLate = True
 
-    if dayCheck and timeCheck:
-        toWork(time)
+    if dayCheck and timeEarly:
+        homeWork(home1, work1, time)
+    elif dayCheck and timeLate:
+        homeWork(work1, home1, time)
     else:
-        toHome()
+        anywhereToHome(time)
 
 
 if __name__ == "__main__":
