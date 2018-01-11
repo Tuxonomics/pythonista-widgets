@@ -5,8 +5,6 @@ Created on Sat Jan 1 19:32:32 2018
 
 @author: Jonas K
 
-WORK IN PROGRESS
-
 A small sript to use Rejseplanen's public REST API. The output needs to fit
 into Pythonista's terminal (40 characters on iPhone).
 """
@@ -16,6 +14,7 @@ import requests
 import sys
 import datetime
 import textwrap
+import time
 from conf import baseUrl, home1, work1
 
 
@@ -53,10 +52,24 @@ def requestStringHome(lon, lat, dest, time):
 
 
 def durationString(trip):
-    duration = ' '.join(
-        [trip[0]['Origin']['time'],
-         "->", trip[-1]['Destination']['time'], ": "])
-    return duration
+#    print(trip)
+    dep = trip[0]['Origin']['time']
+    arr = trip[-1]['Destination']['time']
+
+    return ' '.join([dep, "->", arr, ": "])
+#    [depH, depM] = dep.split(":")
+#    [arrH, arrM] = arr.split(":")
+
+#    day = ((trip[0]['Origin']['date'] == trip[-1]['Destination']['date'])
+#        if 0
+#        else 1)
+
+#    diff = (
+#        datetime.timedelta(days = day, hours = arrH, minutes = arrM) -
+#        datetime.timedelta(days = 0, hours = depH, minutes = depM))
+#    diff = str((diff.seconds//60)%60)
+
+#    return ''.join([dep, " -> ", arr, " (", diff, " min): "])
 
 
 def journeyString(trip):
@@ -79,8 +92,16 @@ def checkStatus(status):
 
 def getCoordinates():
     location.start_updates()
-    loc = location.get_location()
+    for i in range(20):
+        loc = location.get_location()
+        accuracy = loc['horizontal_accuracy']
+        if accuracy < 50:
+            break
+        time.sleep(0.1)
     location.stop_updates()
+    
+    if accuracy > 50:
+        print("CAREFUL! Accuracy (%.0f m) might be low!" % (accuracy))
 
     lat = int(GPSFACTOR * loc['latitude'])
     lon = int(GPSFACTOR * loc['longitude'])
@@ -143,6 +164,7 @@ def main():
 
 #    timeEarly = True
 #    timeLate = True
+    timeLate = False
 
     if dayCheck and timeEarly:
         homeWork(home1, work1, time)
