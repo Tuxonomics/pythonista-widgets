@@ -22,15 +22,6 @@ OUTPUTWIDTH = 40
 GPSFACTOR   = 10**6
 
 
-#def requestStringOffset(origin, dest, timeOffset = 0):
-#    trip = [
-#        "/trip?originId=", str(origin),
-#        "&destId=", str(dest),
-#        "&offsetTime=", str(timeOffset),
-#        "&format=json"]
-#    return ''.join(trip)
-
-
 def requestStringTime(origin, dest, time):
     trip = [
         "/trip?originId=", str(origin),
@@ -57,19 +48,6 @@ def durationString(trip):
     arr = trip[-1]['Destination']['time']
 
     return ' '.join([dep, "->", arr, ": "])
-#    [depH, depM] = dep.split(":")
-#    [arrH, arrM] = arr.split(":")
-
-#    day = ((trip[0]['Origin']['date'] == trip[-1]['Destination']['date'])
-#        if 0
-#        else 1)
-
-#    diff = (
-#        datetime.timedelta(days = day, hours = arrH, minutes = arrM) -
-#        datetime.timedelta(days = 0, hours = depH, minutes = depM))
-#    diff = str((diff.seconds//60)%60)
-
-#    return ''.join([dep, " -> ", arr, " (", diff, " min): "])
 
 
 def journeyString(trip):
@@ -164,7 +142,7 @@ def main():
 
 #    timeEarly = True
 #    timeLate = True
-    timeLate = False
+#    timeLate = False
 
     if dayCheck and timeEarly:
         homeWork(home1, work1, time)
